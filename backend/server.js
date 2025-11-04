@@ -24,31 +24,16 @@ const corsOrigins = process.env.CORS_ORIGIN
 console.log('🔒 CORS enabled for origins:', corsOrigins);
 
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
-    
-    if (corsOrigins.indexOf(origin) !== -1 || corsOrigins.includes('*')) {
-      callback(null, true);
-    } else {
-      console.log('❌ CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: corsOrigins,
   credentials: true,
-  optionsSuccessStatus: 200,
+  optionsSuccessStatus: 204,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['Content-Length', 'X-Request-Id'],
-  preflightContinue: false
+  exposedHeaders: ['Content-Length', 'X-Request-Id']
 };
 
 // Middleware
 app.use(cors(corsOptions));
-
-// Explicitly handle OPTIONS requests
-app.options('*', cors(corsOptions));
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
