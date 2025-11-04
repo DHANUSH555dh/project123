@@ -10,15 +10,7 @@ import { protect, admin } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Explicitly handle OPTIONS for all auth routes
-router.options("/signup", (req, res) => {
-  res.status(204).end();
-});
-
-router.options("/login", (req, res) => {
-  res.status(204).end();
-});
-
+// OPTIONS handled by cors middleware in server.js
 router.post("/signup", registerUser);
 router.post("/login", loginUser);
 router.get("/me", protect, getMe);
