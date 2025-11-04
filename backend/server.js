@@ -23,9 +23,10 @@ const corsOrigins = process.env.CORS_ORIGIN
 
 console.log('🔒 CORS enabled for origins:', corsOrigins);
 
+// Temporarily allow all origins for debugging
 const corsOptions = {
-  origin: corsOrigins,
-  credentials: true,
+  origin: '*',  // Allow all origins temporarily
+  credentials: false,  // Disable credentials when using wildcard
   optionsSuccessStatus: 204,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
