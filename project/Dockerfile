@@ -8,11 +8,17 @@ WORKDIR /app
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
+# Copy package files
 COPY package*.json ./
 RUN npm install
 
-# Copy source and build
+# Copy source files
 COPY . .
+
+# Make build script executable and run it to create .env.production
+RUN chmod +x build-env.sh && ./build-env.sh
+
+# Build the application
 RUN npm run build
 
 # 2) Serve stage using nginx
