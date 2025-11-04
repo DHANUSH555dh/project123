@@ -10,6 +10,19 @@ import authRoutes from "./routes/authRoutes.js";
 // Load environment variables
 dotenv.config();
 
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('💥 Uncaught Exception:', error.message);
+  console.error('Stack:', error.stack);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled Rejection at:', promise);
+  console.error('Reason:', reason);
+  process.exit(1);
+});
+
 // Connect to MongoDB
 connectDB();
 
@@ -102,7 +115,24 @@ app.use((err, req, res, next) => {
 
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => {
+
+console.log('🔍 Starting server with configuration:');
+console.log(`   PORT: ${PORT}`);
+console.log(`   NODE_ENV: ${process.env.NODE_ENV || "development"}`);
+console.log(`   MONGO_URI: ${process.env.MONGO_URI ? 'Set ✓' : 'Missing ✗'}`);
+console.log(`   JWT_SECRET: ${process.env.JWT_SECRET ? 'Set ✓' : 'Missing ✗'}`);
+
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`✅ Server is ready to accept connections`);
+});
+
+server.on('error', (error) => {
+  console.error('❌ Server failed to start:', error.message);
+  console.error('Error code:', error.code);
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use`);
+  }
+  process.exit(1);
 });
