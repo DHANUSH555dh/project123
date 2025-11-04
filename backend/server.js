@@ -18,19 +18,36 @@ const app = express();
 
 // CORS Configuration - Allow frontend to connect
 const corsOrigins = process.env.CORS_ORIGIN 
-  ? process.env.CORS_ORIGIN.split(',')
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
   : ['http://localhost:5173', 'http://127.0.0.1:5173'];
 
+console.log('🔒 CORS enabled for origins:', corsOrigins);
+
 const corsOptions = {
-  origin: corsOrigins,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (corsOrigins.indexOf(origin) !== -1 || corsOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      console.log('❌ CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Length', 'X-Request-Id'],
+  preflightContinue: false
 };
 
 // Middleware
 app.use(cors(corsOptions));
+
+// Explicitly handle OPTIONS requests
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
