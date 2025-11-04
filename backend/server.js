@@ -18,7 +18,7 @@ const app = express();
 
 // CORS Configuration - Allow frontend to connect
 const corsOrigins = process.env.CORS_ORIGIN 
-  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim().replace(/\/$/, ''))
   : ['http://localhost:5173', 'http://127.0.0.1:5173'];
 
 console.log('🔒 CORS enabled for origins:', corsOrigins);
