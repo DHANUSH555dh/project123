@@ -43,6 +43,12 @@ app.use((req, res, next) => {
   next();
 });
 
+// Global OPTIONS handler as fallback
+app.options('*', (req, res) => {
+  console.log('OPTIONS request to:', req.path);
+  res.status(204).end();
+});
+
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/movies", movieRoutes);
