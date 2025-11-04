@@ -38,8 +38,8 @@ api.interceptors.response.use(
   (error) => {
     console.error('📥 Response Error:', error);
     if (error.code === 'ERR_NETWORK') {
-      console.error('❌ Network Error: Cannot connect to backend at', API_URL);
-      console.error('Make sure backend is running on http://localhost:5001');
+      console.error('❌ Network Error: Cannot connect to backend at', API_URL || 'relative path');
+      console.error('Configured API URL:', API_URL || 'Not set - using relative paths');
     }
     return Promise.reject(error);
   }
@@ -84,7 +84,8 @@ export const signup = async (credentials: SignupCredentials): Promise<User> => {
     
     // Handle network errors
     if (error.code === 'ERR_NETWORK' || !error.response) {
-      throw "Cannot connect to server. Please make sure backend is running on http://localhost:5001";
+      const backendUrl = API_URL || 'backend server';
+      throw `Cannot connect to ${backendUrl}. Please check if backend is accessible.`;
     }
     
     const errorMessage = error.response?.data?.message || error.message || "Signup failed";
