@@ -387,6 +387,62 @@ export default function MoviesPage() {
         </div>
       )}
 
+      {/* My Liked Movies Section - Always Visible */}
+      {user && !showTrending && likedMovies.length > 0 && (
+        <div className="bg-gradient-to-br from-pink-50 to-rose-50 p-6 rounded-2xl border-2 border-pink-200 shadow-md">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <Heart className="w-6 h-6 text-pink-600 fill-pink-600" />
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">My Liked Movies</h2>
+                <p className="text-slate-600 text-sm">Your personal collection of favorites</p>
+              </div>
+            </div>
+            <div className="bg-pink-100 px-4 py-2 rounded-full">
+              <span className="text-pink-700 font-semibold">{likedMovies.length} Movies</span>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            {likedMovies.map(movie => (
+              <div key={movie._id} className="bg-white rounded-lg shadow-md border border-pink-100 overflow-hidden hover:shadow-xl transition-all group">
+                <div className="relative h-40 overflow-hidden bg-slate-200">
+                  <img
+                    src={movie.posterUrl}
+                    alt={movie.title}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  />
+                  <button
+                    onClick={() => toggleFavorite(movie)}
+                    className="absolute top-2 right-2 p-1.5 bg-white/95 backdrop-blur-sm rounded-full hover:bg-white transition-colors shadow-md"
+                    title="Remove from favorites"
+                  >
+                    <Heart className="w-4 h-4 fill-red-500 text-red-500" />
+                  </button>
+                  <div className="absolute bottom-2 left-2 flex items-center space-x-1 bg-slate-900/80 backdrop-blur-sm px-2 py-1 rounded">
+                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                    <span className="text-white text-xs font-medium">{movie.rating}</span>
+                  </div>
+                </div>
+                <div className="p-2.5">
+                  <h3 className="text-sm font-semibold text-slate-800 line-clamp-2" title={movie.title}>
+                    {movie.title}
+                  </h3>
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-xs text-slate-500">{movie.releaseYear}</p>
+                    {movie.genre && movie.genre.length > 0 && (
+                      <span className="text-xs text-pink-600 bg-pink-100 px-1.5 py-0.5 rounded">
+                        {movie.genre[0]}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Collaborative Filtering Section - My Liked Movies & CF Recommendations */}
       {showCFSection && user && !showTrending && (
         <div className="space-y-8 bg-gradient-to-br from-purple-50 to-indigo-50 p-8 rounded-2xl border-2 border-purple-200">
