@@ -5,7 +5,7 @@ const favoriteSchema = new mongoose.Schema(
     userId: {
       type: String,
       required: true,
-      default: "guest", // For now, using guest user. Later can be replaced with actual user ID
+      index: true, // Index for faster queries
     },
     itemId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -16,6 +16,28 @@ const favoriteSchema = new mongoose.Schema(
       type: String,
       required: true,
       enum: ["Movie", "Music"],
+    },
+    // Movie/Music details for display without additional queries
+    title: {
+      type: String,
+      required: false,
+    },
+    posterPath: {
+      type: String,
+      required: false,
+    },
+    rating: {
+      type: Number,
+      required: false,
+    },
+    releaseDate: {
+      type: String,
+      required: false,
+    },
+    // Music-specific field
+    artist: {
+      type: String,
+      required: false,
     },
   },
   {

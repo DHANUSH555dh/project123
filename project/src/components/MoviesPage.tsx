@@ -56,10 +56,13 @@ export default function MoviesPage() {
       }
       
       try {
-        const userFavorites = await getFavorites(user._id);
+        console.log('Loading favorites for user:', user._id);
+        const userFavorites = await getFavorites();
+        console.log('Loaded favorites:', userFavorites);
         const favoriteIds = userFavorites
           .filter(fav => fav.itemType === "Movie")
           .map(fav => typeof fav.itemId === 'string' ? fav.itemId : fav.itemId._id);
+        console.log('Favorite movie IDs:', favoriteIds);
         setFavorites(new Set(favoriteIds));
       } catch (error) {
         console.error('Error loading favorites:', error);

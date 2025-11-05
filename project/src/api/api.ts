@@ -218,10 +218,11 @@ export interface Favorite {
   createdAt: string;
 }
 
-export const getFavorites = async (userId: string = "guest"): Promise<Favorite[]> => {
+export const getFavorites = async (): Promise<Favorite[]> => {
   try {
-    const response = await api.get("/api/favorites", { params: { userId } });
-    return response.data;
+    const response = await api.get("/api/favorites");
+    console.log('getFavorites response:', response.data);
+    return response.data.favorites || response.data;
   } catch (error) {
     console.error("Error fetching favorites:", error);
     throw error;
