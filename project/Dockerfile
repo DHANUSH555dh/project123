@@ -15,10 +15,7 @@ RUN npm install
 # Copy source files
 COPY . .
 
-# Make build script executable and run it to create .env.production
-RUN chmod +x build-env.sh && ./build-env.sh
-
-# Build the application
+# Build the application (Vite will use VITE_API_URL from ENV)
 RUN npm run build
 
 # 2) Serve stage using nginx
@@ -27,14 +24,19 @@ FROM nginx:stable-alpine
 # Copy built files
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy custom nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Remove default nginx config
+RUN rm /etc/nginx/conf.d/default.conf
 
-# Copy startup script
-COPY start.sh /start.sh
-RUN chmod +x /start.sh
+# Create nginx config that listens on $PORT
+RUN echo 'server { \n\
+    listen $PORT; \n\
+    server_name _; \n\
+    root /usr/share/nginx/html; \n\
+    index index.html; \n\
+    location / { \n\
+        try_files $uri $uri/ /index.html; \n\
+    } \n\
+}' > /etc/nginx/conf.d/default.conf.template
 
-# Expose port (Railway will set $PORT)
-EXPOSE 80
-
-CMD ["/start.sh"]
+# Use envsubst to replace $PORT at runtime and start nginx
+CMD /bin/sh -c "envsubst '\$PORT' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
