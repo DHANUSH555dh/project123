@@ -1,13 +1,15 @@
 # Build stage - use full Node image for better compatibility
-FROM node:18 AS builder
+FROM --platform=linux/amd64 node:18 AS builder
 
 WORKDIR /app
 
 # Copy package files first (for better layer caching)
 COPY package.json package-lock.json ./
 
-# Clean install dependencies
-RUN rm -rf node_modules && npm install --legacy-peer-deps
+# Clean install dependencies with rollup platform binary
+RUN rm -rf node_modules && \
+    npm install --legacy-peer-deps && \
+    npm install --save-optional @rollup/rollup-linux-x64-gnu || true
 
 # Copy all source files (node_modules excluded via .dockerignore)
 COPY . .
@@ -20,7 +22,7 @@ ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
 # Production stage - use slim image to reduce size
-FROM node:18-slim
+FROM --platform=linux/amd64 node:18-slim
 
 WORKDIR /app
 
