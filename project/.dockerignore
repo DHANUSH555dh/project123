@@ -1,13 +1,7 @@
-# Ignore large dataset files in frontend builds
-backend/data/*.csv
-backend/data/*_real.json
-backend/data/music_dataset.csv
-backend/data/movies.csv
-
-# Node modules
+# Node modules - will be installed fresh
 node_modules/
 
-# Build outputs
+# Build outputs - will be generated
 dist/
 build/
 
@@ -16,9 +10,21 @@ build/
 .env.local
 .env.*.local
 
+# Git
+.git/
+.gitignore
+
 # Logs
 *.log
 npm-debug.log*
 
 # OS files
 .DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Test files
+coverage/
+.nyc_output/

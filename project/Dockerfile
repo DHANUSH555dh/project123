@@ -3,17 +3,17 @@ FROM node:18 AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files first (for better layer caching)
+COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm install --legacy-peer-deps
+# Clean install dependencies
+RUN rm -rf node_modules && npm install --legacy-peer-deps
 
-# Copy source code
+# Copy all source files (node_modules excluded via .dockerignore)
 COPY . .
 
 # Set build-time environment variable
-ARG VITE_API_URL
+ARG VITE_API_URL=https://project123-production-13d6.up.railway.app
 ENV VITE_API_URL=$VITE_API_URL
 
 # Build the application
@@ -24,7 +24,7 @@ FROM node:18-slim
 
 WORKDIR /app
 
-# Copy built files and static server
+# Copy built files from builder
 COPY --from=builder /app/dist ./dist
 COPY static-server.js ./
 
