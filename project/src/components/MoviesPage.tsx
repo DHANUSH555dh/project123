@@ -52,6 +52,7 @@ export default function MoviesPage() {
     const loadFavorites = async () => {
       if (!user) {
         setFavorites(new Set());
+        setLikedMovies([]);
         return;
       }
       
@@ -64,6 +65,15 @@ export default function MoviesPage() {
           .map(fav => typeof fav.itemId === 'string' ? fav.itemId : fav.itemId._id);
         console.log('Favorite movie IDs:', favoriteIds);
         setFavorites(new Set(favoriteIds));
+        
+        // Also load full liked movies data for display
+        try {
+          const liked = await getLikedMovies();
+          console.log('Loaded liked movies:', liked);
+          setLikedMovies(liked);
+        } catch (error) {
+          console.error('Error loading liked movies:', error);
+        }
       } catch (error) {
         console.error('Error loading favorites:', error);
       }
@@ -212,6 +222,10 @@ export default function MoviesPage() {
           interactionType: 'view',
           mood: selectedMood || undefined
         });
+        
+        // After removing, refresh liked movies
+        const liked = await getLikedMovies();
+        setLikedMovies(liked);
       } else {
         // Add to favorites with complete movie data
         console.log('Adding favorite:', { 
@@ -240,6 +254,10 @@ export default function MoviesPage() {
         // Refresh recommendations after liking
         const recommended = await getMovieRecommendations(selectedMood || undefined);
         setRecommendedMovies((recommended.recommendations as APIMovie[]) || []);
+        
+        // Refresh liked movies list for display
+        const liked = await getLikedMovies();
+        setLikedMovies(liked);
         
         // Refresh CF recommendations if CF section is shown
         if (showCFSection) {
