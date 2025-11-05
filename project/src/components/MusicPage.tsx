@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Play, Filter, Music, Pause, X, Info } from 'lucide-react';
+import { Heart, Play, Filter, Music, Pause, X, Info, Zap } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
-import api from '../api/api';
+import api, { getMusicRecommendations, trackInteraction, getLikedMusic, type Song as APISong } from '../api/api';
+import { useAuth } from '../context/AuthContext';
 
 interface Song {
   _id: string;
@@ -16,7 +17,10 @@ interface Song {
 }
 
 export default function MusicPage() {
+  const { user } = useAuth();
   const [music, setMusic] = useState<Song[]>([]);
+  const [recommendedMusic, setRecommendedMusic] = useState<APISong[]>([]);
+  const [likedMusic, setLikedMusic] = useState<APISong[]>([]);
   const [artists, setArtists] = useState<string[]>([]);
   const [selectedGenre, setSelectedGenre] = useState<string>('');
   const [selectedArtist, setSelectedArtist] = useState<string>('');
@@ -80,8 +84,50 @@ export default function MusicPage() {
     const timer = setTimeout(() => setLoading(false), 800);
     return () => clearTimeout(timer);
   }, []);
+  
+  // Fetch personalized music recommendations and liked music
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      try {
+        if (!user) {
+          // Clear recommendations if not logged in
+          setRecommendedMusic([]);
+          setLikedMusic([]);
+          setFavorites(new Set());
+          return;
+        }
+        
+        const [recommended, liked] = await Promise.all([
+          getMusicRecommendations(undefined, 20).catch(err => {
+            console.error('Failed to fetch music recommendations:', err);
+            return { recommendations: [], liked: [] };
+          }),
+          getLikedMusic().catch(err => {
+            console.error('Failed to fetch liked music:', err);
+            return [];
+          })
+        ]);
+        
+        console.log('Music recommendations fetched:', recommended);
+        console.log('Liked music fetched:', liked);
+        
+        setRecommendedMusic((recommended.recommendations as APISong[]) || []);
+        setLikedMusic(liked || []);
+        
+        // Update favorites set from liked music
+        const likedIds = new Set(liked.map(m => m._id));
+        setFavorites(prev => new Set([...prev, ...likedIds]));
+      } catch (error) {
+        console.error('Error fetching music recommendations:', error);
+      }
+    };
 
-  const toggleFavorite = (id: string, title: string) => {
+    fetchRecommendations();
+  }, [user]); // Re-fetch when user logs in/out
+
+  const toggleFavorite = async (id: string, title: string) => {
+    const isCurrentlyFavorite = favorites.has(id);
+    
     setFavorites(prev => {
       const newFavorites = new Set(prev);
       if (newFavorites.has(id)) {
@@ -99,6 +145,23 @@ export default function MusicPage() {
       }
       return newFavorites;
     });
+    
+    // Track interaction with backend
+    try {
+      await trackInteraction({
+        itemId: id,
+        itemType: 'music',
+        interactionType: isCurrentlyFavorite ? 'view' : 'like'
+      });
+      
+      // Refresh recommendations after liking/unliking
+      if (!isCurrentlyFavorite) {
+        const recommended = await getMusicRecommendations(undefined, 20);
+        setRecommendedMusic((recommended.recommendations as APISong[]) || []);
+      }
+    } catch (error) {
+      console.error('Error tracking music interaction:', error);
+    }
   };
 
   const togglePlay = (id: string) => {
@@ -236,6 +299,83 @@ export default function MusicPage() {
           </motion.div>
         )}
       </motion.div>
+
+      {/* Personalized Music Recommendations Section */}
+      {recommendedMusic.length > 0 && (
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="space-y-4"
+        >
+          <div className="flex items-center space-x-3">
+            <Zap className="w-6 h-6 text-purple-600" />
+            <h2 className="text-2xl font-bold text-slate-800">Recommended for You</h2>
+          </div>
+          <p className="text-slate-600">Based on music you've liked</p>
+          
+          <div className="grid grid-cols-1 gap-3">
+            {recommendedMusic.slice(0, 6).map((song, index) => (
+              <motion.div
+                key={song._id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl shadow-sm border border-purple-200 p-4 hover:shadow-md transition-all group"
+              >
+                <div className="flex items-center space-x-4">
+                  <div className="relative">
+                    <img
+                      src={song.coverUrl || '/placeholder-album.png'}
+                      alt={song.album}
+                      className="w-20 h-20 rounded-xl object-cover shadow-md"
+                    />
+                    <button
+                      onClick={() => togglePlay(song._id)}
+                      className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      {playing === song._id ? (
+                        <Pause className="w-8 h-8 text-white" />
+                      ) : (
+                        <Play className="w-8 h-8 text-white ml-1" />
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-semibold text-slate-800 truncate">{song.title}</h3>
+                    <p className="text-sm text-slate-600 truncate">{song.artist}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
+                        {song.genre}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => toggleFavorite(song._id, song.title)}
+                    className="p-3 hover:bg-white/50 rounded-full transition-colors"
+                  >
+                    <Heart
+                      className={`w-6 h-6 transition-colors ${
+                        favorites.has(song._id) ? 'fill-red-500 text-red-500' : 'text-slate-400'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Browse All Music Section */}
+      {recommendedMusic.length > 0 && (
+        <div className="flex items-center space-x-3">
+          <Filter className="w-6 h-6 text-teal-600" />
+          <h2 className="text-2xl font-bold text-slate-800">Browse All Music</h2>
+        </div>
+      )}
 
       {/* Music List */}
       <motion.div

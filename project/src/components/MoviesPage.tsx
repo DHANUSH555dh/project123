@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Star, Heart, Filter, Sparkles, TrendingUp } from 'lucide-react';
-import api from '../api/api';
+import { Star, Heart, Filter, Sparkles, TrendingUp, Zap } from 'lucide-react';
+import api, { getMovieRecommendations, trackInteraction, getLikedMovies, type Movie as APIMovie } from '../api/api';
+import { useAuth } from '../context/AuthContext';
 
 interface Movie {
   _id: string;
@@ -16,7 +17,10 @@ interface Movie {
 }
 
 export default function MoviesPage() {
+  const { user } = useAuth();
   const [movies, setMovies] = useState<Movie[]>([]);
+  const [recommendedMovies, setRecommendedMovies] = useState<APIMovie[]>([]);
+  const [likedMovies, setLikedMovies] = useState<APIMovie[]>([]);
   const [moods, setMoods] = useState<string[]>([]);
   const [genres, setGenres] = useState<string[]>([]);
   const [selectedMood, setSelectedMood] = useState<string>('');
@@ -75,12 +79,54 @@ export default function MoviesPage() {
     fetchData();
   }, [selectedMood, selectedGenre, currentPage, showTrending]);
   
+  // Fetch personalized recommendations and liked movies
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      try {
+        if (!user) {
+          // Clear recommendations if not logged in
+          setRecommendedMovies([]);
+          setLikedMovies([]);
+          setFavorites(new Set());
+          return;
+        }
+        
+        const [recommended, liked] = await Promise.all([
+          getMovieRecommendations(selectedMood || undefined).catch(err => {
+            console.error('Failed to fetch recommendations:', err);
+            return { recommendations: [], liked: [] };
+          }),
+          getLikedMovies().catch(err => {
+            console.error('Failed to fetch liked movies:', err);
+            return [];
+          })
+        ]);
+        
+        console.log('Recommendations fetched:', recommended);
+        console.log('Liked movies fetched:', liked);
+        
+        setRecommendedMovies((recommended.recommendations as APIMovie[]) || []);
+        setLikedMovies(liked || []);
+        
+        // Update favorites set from liked movies
+        const likedIds = new Set(liked.map(m => m._id));
+        setFavorites(likedIds);
+      } catch (error) {
+        console.error('Error fetching recommendations:', error);
+      }
+    };
+
+    fetchRecommendations();
+  }, [user, selectedMood]); // Re-fetch when user logs in/out or mood changes
+  
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedMood, selectedGenre, showTrending]);
 
-  const toggleFavorite = (id: string) => {
+  const toggleFavorite = async (id: string) => {
+    const isCurrentlyFavorite = favorites.has(id);
+    
     setFavorites(prev => {
       const newFavorites = new Set(prev);
       if (newFavorites.has(id)) {
@@ -90,6 +136,24 @@ export default function MoviesPage() {
       }
       return newFavorites;
     });
+    
+    // Track interaction with backend
+    try {
+      await trackInteraction({
+        itemId: id,
+        itemType: 'movie',
+        interactionType: isCurrentlyFavorite ? 'view' : 'like',
+        mood: selectedMood || undefined
+      });
+      
+      // Refresh recommendations after liking/unliking
+      if (!isCurrentlyFavorite) {
+        const recommended = await getMovieRecommendations(selectedMood || undefined);
+        setRecommendedMovies((recommended.recommendations as APIMovie[]) || []);
+      }
+    } catch (error) {
+      console.error('Error tracking interaction:', error);
+    }
   };
 
   return (
@@ -199,6 +263,69 @@ export default function MoviesPage() {
               {selectedGenre && <span> in the {selectedGenre} genre</span>}
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Personalized Recommendations Section */}
+      {recommendedMovies.length > 0 && !showTrending && (
+        <div className="space-y-4">
+          <div className="flex items-center space-x-3">
+            <Zap className="w-6 h-6 text-purple-600" />
+            <h2 className="text-2xl font-bold text-slate-800">Recommended for You</h2>
+          </div>
+          <p className="text-slate-600">Based on movies you've liked {selectedMood ? `when feeling ${selectedMood.toLowerCase()}` : ''}</p>
+          
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {recommendedMovies.slice(0, 8).map(movie => (
+              <div key={movie._id} className="bg-white rounded-xl shadow-sm border border-purple-200 overflow-hidden hover:shadow-lg transition-shadow group">
+                <div className="relative h-56 overflow-hidden bg-slate-200">
+                  <img
+                    src={movie.posterUrl}
+                    alt={movie.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <button
+                    onClick={() => toggleFavorite(movie._id)}
+                    className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors"
+                    aria-label={favorites.has(movie._id) ? 'Remove from favorites' : 'Add to favorites'}
+                  >
+                    <Heart
+                      className={`w-5 h-5 ${favorites.has(movie._id) ? 'fill-red-500 text-red-500' : 'text-slate-600'}`}
+                    />
+                  </button>
+                  <div className="absolute bottom-3 left-3 flex items-center space-x-1 bg-slate-900/80 backdrop-blur-sm px-2 py-1 rounded">
+                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    <span className="text-white text-sm font-medium">{movie.rating}</span>
+                  </div>
+                </div>
+
+                <div className="p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="text-lg font-semibold text-slate-800 line-clamp-1">{movie.title}</h3>
+                    <span className="text-sm text-slate-500 whitespace-nowrap ml-2">{movie.releaseYear}</span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {movie.genre.slice(0, 2).map((g: string) => (
+                      <span key={g} className="text-xs px-2 py-1 bg-purple-50 text-purple-700 rounded-full">
+                        {g}
+                      </span>
+                    ))}
+                  </div>
+
+                  <p className="text-sm text-slate-600 line-clamp-2">{movie.overview}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* All Movies Section */}
+      {!showTrending && recommendedMovies.length > 0 && (
+        <div className="flex items-center space-x-3 mt-8">
+          <Filter className="w-6 h-6 text-emerald-600" />
+          <h2 className="text-2xl font-bold text-slate-800">Browse All Movies</h2>
         </div>
       )}
 

@@ -277,4 +277,85 @@ export const checkAPIHealth = async (): Promise<any> => {
   }
 };
 
+// ==================== RECOMMENDATIONS ====================
+
+export interface Recommendation {
+  recommendations: Movie[] | Song[];
+  liked: Movie[] | Song[];
+  mood?: string;
+}
+
+export const getMovieRecommendations = async (
+  mood?: string,
+  limit: number = 20
+): Promise<Recommendation> => {
+  try {
+    const params = new URLSearchParams();
+    if (mood) params.append("mood", mood);
+    params.append("limit", limit.toString());
+
+    const response = await api.get(`/api/recommendations/movies?${params}`);
+    return response.data.data;
+  } catch (error) {
+    console.error("Error getting movie recommendations:", error);
+    throw error;
+  }
+};
+
+export const getMusicRecommendations = async (
+  mood?: string,
+  limit: number = 20
+): Promise<Recommendation> => {
+  try {
+    const params = new URLSearchParams();
+    if (mood) params.append("mood", mood);
+    params.append("limit", limit.toString());
+
+    const response = await api.get(`/api/recommendations/music?${params}`);
+    return response.data.data;
+  } catch (error) {
+    console.error("Error getting music recommendations:", error);
+    throw error;
+  }
+};
+
+export interface InteractionData {
+  itemId: string;
+  itemType: "movie" | "music";
+  interactionType: "view" | "like" | "rating" | "favorite";
+  rating?: number;
+  mood?: string;
+  duration?: number;
+}
+
+export const trackInteraction = async (data: InteractionData): Promise<any> => {
+  try {
+    const response = await api.post("/api/recommendations/interact", data);
+    return response.data;
+  } catch (error) {
+    console.error("Error tracking interaction:", error);
+    throw error;
+  }
+};
+
+export const getLikedMovies = async (): Promise<Movie[]> => {
+  try {
+    const response = await api.get("/api/recommendations/liked/movies");
+    return response.data.data;
+  } catch (error) {
+    console.error("Error getting liked movies:", error);
+    throw error;
+  }
+};
+
+export const getLikedMusic = async (): Promise<Song[]> => {
+  try {
+    const response = await api.get("/api/recommendations/liked/music");
+    return response.data.data;
+  } catch (error) {
+    console.error("Error getting liked music:", error);
+    throw error;
+  }
+};
+
 export default api;
