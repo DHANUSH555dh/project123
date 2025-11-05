@@ -5,6 +5,9 @@ import api, {
   trackInteraction, 
   getCollaborativeMovieRecommendations,
   getLikedMovies,
+  getFavorites,
+  addFavorite,
+  removeFavoriteByItem,
   type Movie as APIMovie,
   type CFRecommendation 
 } from '../api/api';
@@ -43,6 +46,28 @@ export default function MoviesPage() {
   const [likedMovies, setLikedMovies] = useState<APIMovie[]>([]);
   const [cfRecommendations, setCfRecommendations] = useState<CFRecommendation | null>(null);
   const [loadingCF, setLoadingCF] = useState(false);
+
+  // Load user's favorites on mount
+  useEffect(() => {
+    const loadFavorites = async () => {
+      if (!user) {
+        setFavorites(new Set());
+        return;
+      }
+      
+      try {
+        const userFavorites = await getFavorites(user._id);
+        const favoriteIds = userFavorites
+          .filter(fav => fav.itemType === "Movie")
+          .map(fav => typeof fav.itemId === 'string' ? fav.itemId : fav.itemId._id);
+        setFavorites(new Set(favoriteIds));
+      } catch (error) {
+        console.error('Error loading favorites:', error);
+      }
+    };
+    
+    loadFavorites();
+  }, [user]);
 
   // Fetch movies, moods, and genres from API
   useEffect(() => {
@@ -151,8 +176,14 @@ export default function MoviesPage() {
   };
 
   const toggleFavorite = async (id: string) => {
+    if (!user) {
+      console.error('User must be logged in to favorite movies');
+      return;
+    }
+
     const isCurrentlyFavorite = favorites.has(id);
     
+    // Optimistically update UI
     setFavorites(prev => {
       const newFavorites = new Set(prev);
       if (newFavorites.has(id)) {
@@ -163,17 +194,31 @@ export default function MoviesPage() {
       return newFavorites;
     });
     
-    // Track interaction with backend
     try {
-      await trackInteraction({
-        itemId: id,
-        itemType: 'movie',
-        interactionType: isCurrentlyFavorite ? 'view' : 'like',
-        mood: selectedMood || undefined
-      });
-      
-      // Refresh recommendations after liking/unliking
-      if (!isCurrentlyFavorite) {
+      if (isCurrentlyFavorite) {
+        // Remove from favorites
+        await removeFavoriteByItem(id, 'Movie', user._id);
+        
+        // Track as view instead of like
+        await trackInteraction({
+          itemId: id,
+          itemType: 'movie',
+          interactionType: 'view',
+          mood: selectedMood || undefined
+        });
+      } else {
+        // Add to favorites
+        await addFavorite(id, 'Movie', user._id);
+        
+        // Track as like
+        await trackInteraction({
+          itemId: id,
+          itemType: 'movie',
+          interactionType: 'like',
+          mood: selectedMood || undefined
+        });
+        
+        // Refresh recommendations after liking
         const recommended = await getMovieRecommendations(selectedMood || undefined);
         setRecommendedMovies((recommended.recommendations as APIMovie[]) || []);
         
@@ -183,7 +228,18 @@ export default function MoviesPage() {
         }
       }
     } catch (error) {
-      console.error('Error tracking interaction:', error);
+      console.error('Error toggling favorite:', error);
+      
+      // Revert optimistic update on error
+      setFavorites(prev => {
+        const newFavorites = new Set(prev);
+        if (isCurrentlyFavorite) {
+          newFavorites.add(id);
+        } else {
+          newFavorites.delete(id);
+        }
+        return newFavorites;
+      });
     }
   };
 
