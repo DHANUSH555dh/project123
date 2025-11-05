@@ -335,7 +335,7 @@ export const getMusicRecommendations = async (
 
 export interface InteractionData {
   itemId: string;
-  itemType: "movie" | "music";
+  itemType: "Movie" | "Music";
   interactionType: "view" | "like" | "rating" | "favorite";
   rating?: number;
   mood?: string;

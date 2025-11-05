@@ -143,7 +143,7 @@ export default function MusicPage() {
     try {
       await trackInteraction({
         itemId: id,
-        itemType: 'music',
+        itemType: 'Music',
         interactionType: isCurrentlyFavorite ? 'view' : 'like'
       });
       

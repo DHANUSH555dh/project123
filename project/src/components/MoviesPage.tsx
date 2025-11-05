@@ -230,7 +230,7 @@ export default function MoviesPage() {
         // Track as view instead of like
         await trackInteraction({
           itemId: id,
-          itemType: 'movie',
+          itemType: 'Movie',
           interactionType: 'view',
           mood: selectedMood || undefined
         });
@@ -258,7 +258,7 @@ export default function MoviesPage() {
         // Track as like
         await trackInteraction({
           itemId: id,
-          itemType: 'movie',
+          itemType: 'Movie',
           interactionType: 'like',
           mood: selectedMood || undefined
         });

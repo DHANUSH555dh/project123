@@ -37,7 +37,7 @@ const migrateFavoritesToInteractions = async () => {
         const existingInteraction = await UserInteraction.findOne({
           user: favorite.userId,
           itemId: favorite.itemId,
-          itemType: favorite.itemType.toLowerCase(),
+          itemType: favorite.itemType, // Already capitalized "Movie" or "Music"
           interactionType: 'like'
         });
 
@@ -51,7 +51,7 @@ const migrateFavoritesToInteractions = async () => {
         await UserInteraction.create({
           user: favorite.userId,
           itemId: favorite.itemId,
-          itemType: favorite.itemType.toLowerCase(), // "Movie" -> "movie"
+          itemType: favorite.itemType, // Keep capitalized "Movie" or "Music"
           interactionType: 'like',
           createdAt: favorite.createdAt || new Date()
         });

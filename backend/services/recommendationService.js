@@ -410,7 +410,7 @@ class RecommendationEngine {
       // First try to get from UserInteraction (newer approach)
       const interactions = await UserInteraction.find({
         user: userId,
-        itemType: "movie",
+        itemType: "Movie",
         interactionType: { $in: ["like", "favorite"] },
       })
         .populate("itemId")
@@ -463,7 +463,7 @@ class RecommendationEngine {
       // First try to get from UserInteraction (newer approach)
       const interactions = await UserInteraction.find({
         user: userId,
-        itemType: "music",
+        itemType: "Music",
         interactionType: { $in: ["like", "favorite"] },
       })
         .populate("itemId")
