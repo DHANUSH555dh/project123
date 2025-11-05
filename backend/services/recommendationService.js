@@ -418,7 +418,7 @@ class RecommendationEngine {
 
       // Also get from Favorite model (older approach, for backward compatibility)
       const favorites = await Favorite.find({
-        userId: userId.toString(),
+        userId: userId,
         itemType: "Movie",
       }).lean();
 
@@ -471,7 +471,7 @@ class RecommendationEngine {
 
       // Also get from Favorite model (older approach, for backward compatibility)
       const favorites = await Favorite.find({
-        userId: userId.toString(),
+        userId: userId,
         itemType: "Music",
       }).lean();
 
