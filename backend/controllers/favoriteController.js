@@ -111,3 +111,5 @@ const removeFavoriteByItem = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export { getFavorites, addFavorite, removeFavorite, removeFavoriteByItem };
