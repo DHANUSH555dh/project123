@@ -272,19 +272,39 @@ export default function MoviesPage() {
         status: error.response?.status
       });
       
-      // Show user-friendly error message
-      alert(`Failed to ${isCurrentlyFavorite ? 'remove' : 'add'} favorite: ${error.response?.data?.message || error.message}`);
+      const errorMessage = error.response?.data?.message || error.message;
       
-      // Revert optimistic update on error
-      setFavorites(prev => {
-        const newFavorites = new Set(prev);
-        if (isCurrentlyFavorite) {
-          newFavorites.add(id);
-        } else {
-          newFavorites.delete(id);
+      // Handle "Already in favorites" gracefully - just refresh state
+      if (errorMessage?.includes('Already in favorites')) {
+        console.log('Movie already in favorites, refreshing state...');
+        // Refresh favorites from database to sync state
+        try {
+          const userFavorites = await getFavorites();
+          const favoriteIds = userFavorites
+            .filter(fav => fav.itemType === "Movie")
+            .map(fav => typeof fav.itemId === 'string' ? fav.itemId : fav.itemId._id);
+          setFavorites(new Set(favoriteIds));
+          
+          const liked = await getLikedMovies();
+          setLikedMovies(liked);
+        } catch (refreshError) {
+          console.error('Error refreshing favorites:', refreshError);
         }
-        return newFavorites;
-      });
+      } else {
+        // Show error alert for real errors
+        alert(`Failed to ${isCurrentlyFavorite ? 'remove' : 'add'} favorite: ${errorMessage}`);
+        
+        // Revert optimistic update on error
+        setFavorites(prev => {
+          const newFavorites = new Set(prev);
+          if (isCurrentlyFavorite) {
+            newFavorites.add(id);
+          } else {
+            newFavorites.delete(id);
+          }
+          return newFavorites;
+        });
+      }
     }
   };
 
