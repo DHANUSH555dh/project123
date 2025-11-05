@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Star, Heart, Filter, Sparkles, TrendingUp, Zap } from 'lucide-react';
-import api, { getMovieRecommendations, trackInteraction, getLikedMovies, type Movie as APIMovie } from '../api/api';
+import api, { getMovieRecommendations, trackInteraction, type Movie as APIMovie } from '../api/api';
 import { useAuth } from '../context/AuthContext';
 
 interface Movie {
@@ -20,7 +20,6 @@ export default function MoviesPage() {
   const { user } = useAuth();
   const [movies, setMovies] = useState<Movie[]>([]);
   const [recommendedMovies, setRecommendedMovies] = useState<APIMovie[]>([]);
-  const [likedMovies, setLikedMovies] = useState<APIMovie[]>([]);
   const [moods, setMoods] = useState<string[]>([]);
   const [genres, setGenres] = useState<string[]>([]);
   const [selectedMood, setSelectedMood] = useState<string>('');
@@ -79,38 +78,32 @@ export default function MoviesPage() {
     fetchData();
   }, [selectedMood, selectedGenre, currentPage, showTrending]);
   
-  // Fetch personalized recommendations and liked movies
+  // Fetch personalized recommendations
   useEffect(() => {
     const fetchRecommendations = async () => {
       try {
         if (!user) {
           // Clear recommendations if not logged in
           setRecommendedMovies([]);
-          setLikedMovies([]);
           setFavorites(new Set());
           return;
         }
         
-        const [recommended, liked] = await Promise.all([
-          getMovieRecommendations(selectedMood || undefined).catch(err => {
-            console.error('Failed to fetch recommendations:', err);
-            return { recommendations: [], liked: [] };
-          }),
-          getLikedMovies().catch(err => {
-            console.error('Failed to fetch liked movies:', err);
-            return [];
-          })
-        ]);
+        const recommended = await getMovieRecommendations(selectedMood || undefined).catch(err => {
+          console.error('Failed to fetch recommendations:', err);
+          return { recommendations: [], liked: [] };
+        });
         
         console.log('Recommendations fetched:', recommended);
-        console.log('Liked movies fetched:', liked);
         
         setRecommendedMovies((recommended.recommendations as APIMovie[]) || []);
-        setLikedMovies(liked || []);
         
-        // Update favorites set from liked movies
-        const likedIds = new Set(liked.map(m => m._id));
-        setFavorites(likedIds);
+        // Update favorites set from liked movies in recommendation response
+        if (recommended.liked && Array.isArray(recommended.liked)) {
+          const likedMovies = recommended.liked as APIMovie[];
+          const likedIds = new Set(likedMovies.map(m => m._id));
+          setFavorites(likedIds);
+        }
       } catch (error) {
         console.error('Error fetching recommendations:', error);
       }

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Play, Filter, Music, Pause, X, Info, Zap } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
-import api, { getMusicRecommendations, trackInteraction, getLikedMusic, type Song as APISong } from '../api/api';
+import api, { getMusicRecommendations, trackInteraction, type Song as APISong } from '../api/api';
 import { useAuth } from '../context/AuthContext';
 
 interface Song {
@@ -20,7 +20,6 @@ export default function MusicPage() {
   const { user } = useAuth();
   const [music, setMusic] = useState<Song[]>([]);
   const [recommendedMusic, setRecommendedMusic] = useState<APISong[]>([]);
-  const [likedMusic, setLikedMusic] = useState<APISong[]>([]);
   const [artists, setArtists] = useState<string[]>([]);
   const [selectedGenre, setSelectedGenre] = useState<string>('');
   const [selectedArtist, setSelectedArtist] = useState<string>('');
@@ -85,38 +84,32 @@ export default function MusicPage() {
     return () => clearTimeout(timer);
   }, []);
   
-  // Fetch personalized music recommendations and liked music
+  // Fetch personalized music recommendations
   useEffect(() => {
     const fetchRecommendations = async () => {
       try {
         if (!user) {
           // Clear recommendations if not logged in
           setRecommendedMusic([]);
-          setLikedMusic([]);
           setFavorites(new Set());
           return;
         }
         
-        const [recommended, liked] = await Promise.all([
-          getMusicRecommendations(undefined, 20).catch(err => {
-            console.error('Failed to fetch music recommendations:', err);
-            return { recommendations: [], liked: [] };
-          }),
-          getLikedMusic().catch(err => {
-            console.error('Failed to fetch liked music:', err);
-            return [];
-          })
-        ]);
+        const recommended = await getMusicRecommendations(undefined, 20).catch(err => {
+          console.error('Failed to fetch music recommendations:', err);
+          return { recommendations: [], liked: [] };
+        });
         
         console.log('Music recommendations fetched:', recommended);
-        console.log('Liked music fetched:', liked);
         
         setRecommendedMusic((recommended.recommendations as APISong[]) || []);
-        setLikedMusic(liked || []);
         
-        // Update favorites set from liked music
-        const likedIds = new Set(liked.map(m => m._id));
-        setFavorites(prev => new Set([...prev, ...likedIds]));
+        // Update favorites set from liked music in recommendation response
+        if (recommended.liked && Array.isArray(recommended.liked)) {
+          const likedMusic = recommended.liked as APISong[];
+          const likedIds = new Set(likedMusic.map(m => m._id));
+          setFavorites(prev => new Set([...prev, ...likedIds]));
+        }
       } catch (error) {
         console.error('Error fetching music recommendations:', error);
       }
