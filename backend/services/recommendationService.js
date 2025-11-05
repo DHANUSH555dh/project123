@@ -1,6 +1,7 @@
 import UserInteraction from "../models/userInteractionModel.js";
 import Movie from "../models/movieModel.js";
 import Music from "../models/musicModel.js";
+import Favorite from "../models/favoriteModel.js";
 import collaborativeFilteringService from "./collaborativeFilteringService.js";
 
 /**
@@ -406,16 +407,48 @@ class RecommendationEngine {
    */
   async getLikedMovies(userId) {
     try {
-      const liked = await UserInteraction.find({
+      // First try to get from UserInteraction (newer approach)
+      const interactions = await UserInteraction.find({
         user: userId,
         itemType: "movie",
         interactionType: { $in: ["like", "favorite"] },
       })
         .populate("itemId")
-        .sort({ createdAt: -1 })
-        .limit(20);
+        .sort({ createdAt: -1 });
 
-      return liked.map((interaction) => interaction.itemId).filter(Boolean);
+      // Also get from Favorite model (older approach, for backward compatibility)
+      const favorites = await Favorite.find({
+        userId: userId.toString(),
+        itemType: "Movie",
+      }).lean();
+
+      // Combine both sources and get unique movie IDs
+      const movieIds = new Set();
+      
+      // Add from interactions
+      interactions.forEach(interaction => {
+        if (interaction.itemId && interaction.itemId._id) {
+          movieIds.add(interaction.itemId._id.toString());
+        }
+      });
+
+      // Add from favorites
+      favorites.forEach(fav => {
+        if (fav.itemId) {
+          movieIds.add(fav.itemId.toString());
+        }
+      });
+
+      // Fetch all unique movies
+      if (movieIds.size === 0) {
+        return [];
+      }
+
+      const movies = await Movie.find({
+        _id: { $in: Array.from(movieIds) }
+      }).lean();
+
+      return movies;
     } catch (error) {
       console.error("Error getting liked movies:", error);
       return [];
@@ -427,16 +460,48 @@ class RecommendationEngine {
    */
   async getLikedMusic(userId) {
     try {
-      const liked = await UserInteraction.find({
+      // First try to get from UserInteraction (newer approach)
+      const interactions = await UserInteraction.find({
         user: userId,
         itemType: "music",
         interactionType: { $in: ["like", "favorite"] },
       })
         .populate("itemId")
-        .sort({ createdAt: -1 })
-        .limit(20);
+        .sort({ createdAt: -1 });
 
-      return liked.map((interaction) => interaction.itemId).filter(Boolean);
+      // Also get from Favorite model (older approach, for backward compatibility)
+      const favorites = await Favorite.find({
+        userId: userId.toString(),
+        itemType: "Music",
+      }).lean();
+
+      // Combine both sources and get unique music IDs
+      const musicIds = new Set();
+      
+      // Add from interactions
+      interactions.forEach(interaction => {
+        if (interaction.itemId && interaction.itemId._id) {
+          musicIds.add(interaction.itemId._id.toString());
+        }
+      });
+
+      // Add from favorites
+      favorites.forEach(fav => {
+        if (fav.itemId) {
+          musicIds.add(fav.itemId.toString());
+        }
+      });
+
+      // Fetch all unique music tracks
+      if (musicIds.size === 0) {
+        return [];
+      }
+
+      const music = await Music.find({
+        _id: { $in: Array.from(musicIds) }
+      }).lean();
+
+      return music;
     } catch (error) {
       console.error("Error getting liked music:", error);
       return [];
