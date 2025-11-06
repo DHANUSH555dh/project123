@@ -151,18 +151,48 @@ export default function MoviesPage() {
           return;
         }
         
-        const recommended = await getMovieRecommendations(selectedMood || undefined).catch(err => {
-          console.error('Failed to fetch recommendations:', err);
-          return { recommendations: [], liked: [] };
+        // Fetch both content-based and collaborative filtering recommendations
+        const [contentBased, collaborative] = await Promise.all([
+          getMovieRecommendations(selectedMood || undefined).catch(err => {
+            console.error('Failed to fetch content-based recommendations:', err);
+            return { recommendations: [], liked: [] };
+          }),
+          getCollaborativeMovieRecommendations(30, 20, 2).catch(err => {
+            console.error('Failed to fetch collaborative recommendations:', err);
+            return { recommendations: [] };
+          })
+        ]);
+        
+        console.log('Content-based recommendations:', contentBased);
+        console.log('Collaborative filtering recommendations:', collaborative);
+        
+        // Merge recommendations: prioritize CF recommendations, then content-based
+        const cfMovies = (collaborative.recommendations as APIMovie[]) || [];
+        const cbMovies = (contentBased.recommendations as APIMovie[]) || [];
+        
+        // Combine and deduplicate by movie ID
+        const combinedMap = new Map<string, APIMovie>();
+        
+        // Add CF recommendations first (higher priority)
+        cfMovies.forEach(movie => {
+          combinedMap.set(movie._id, movie);
         });
         
-        console.log('Recommendations fetched:', recommended);
+        // Add content-based recommendations
+        cbMovies.forEach(movie => {
+          if (!combinedMap.has(movie._id)) {
+            combinedMap.set(movie._id, movie);
+          }
+        });
         
-        setRecommendedMovies((recommended.recommendations as APIMovie[]) || []);
+        const mergedRecommendations = Array.from(combinedMap.values());
+        console.log('Merged recommendations:', mergedRecommendations.length, 'movies');
+        
+        setRecommendedMovies(mergedRecommendations);
         
         // Update favorites set from liked movies in recommendation response
-        if (recommended.liked && Array.isArray(recommended.liked)) {
-          const likedMovies = recommended.liked as APIMovie[];
+        if (contentBased.liked && Array.isArray(contentBased.liked)) {
+          const likedMovies = contentBased.liked as APIMovie[];
           const likedIds = new Set(likedMovies.map(m => m._id));
           setFavorites(likedIds);
         }
@@ -678,7 +708,7 @@ export default function MoviesPage() {
             <Zap className="w-6 h-6 text-purple-600" />
             <h2 className="text-2xl font-bold text-slate-800">Recommended for You</h2>
           </div>
-          <p className="text-slate-600">Based on movies you've liked {selectedMood ? `when feeling ${selectedMood.toLowerCase()}` : ''}</p>
+          <p className="text-slate-600">Based on movies you've liked and similar users' preferences {selectedMood ? `when feeling ${selectedMood.toLowerCase()}` : ''}</p>
           
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {recommendedMovies.slice(0, 8).map(movie => (
