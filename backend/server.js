@@ -24,8 +24,39 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB and run migrations
+connectDB().then(async () => {
+  try {
+    // Fix any existing itemType values to use capitalized format
+    const { default: UserInteraction } = await import('./models/userInteractionModel.js');
+    
+    // Log the actual enum values loaded from the model
+    const schema = UserInteraction.schema.path('itemType');
+    console.log('📋 UserInteraction.itemType enum values:', schema.enumValues);
+    
+    const result = await UserInteraction.updateMany(
+      { itemType: { $in: ['movie', 'music'] } },
+      [{ 
+        $set: { 
+          itemType: { 
+            $switch: {
+              branches: [
+                { case: { $eq: ['$itemType', 'movie'] }, then: 'Movie' },
+                { case: { $eq: ['$itemType', 'music'] }, then: 'Music' }
+              ],
+              default: '$itemType'
+            }
+          }
+        }
+      }]
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`✅ Auto-migration: Updated ${result.modifiedCount} itemType values to capitalized format`);
+    }
+  } catch (error) {
+    console.error('⚠️ Auto-migration warning:', error.message);
+  }
+});
 
 // Initialize Express app
 const app = express();
