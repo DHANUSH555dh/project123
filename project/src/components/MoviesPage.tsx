@@ -262,14 +262,6 @@ export default function MoviesPage() {
         await removeFavoriteByItem(id, 'Movie');
         console.log('Successfully removed favorite');
         
-        // Track as view instead of like
-        await trackInteraction({
-          itemId: id,
-          itemType: 'Movie',
-          interactionType: 'view',
-          mood: selectedMood || undefined
-        });
-        
         // After removing, refresh liked movies
         const liked = await getLikedMovies();
         setLikedMovies(liked);
