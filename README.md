@@ -1,6 +1,6 @@
-# 🎬🎵 KOSG - Entertainment Discovery Platform
+Entertainment Discovery Platform
 
-**KOSG** (King of Songs and Games) is a full-stack web application that provides personalized movie and music recommendations based on your mood and genre preferences.
+Entertainment Discovery Platform is a full-stack web application that provides personalized movie and music recommendations based on your mood and genre preferences.
 
 ## ✨ Features
 
